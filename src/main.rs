@@ -6,6 +6,7 @@ use web_sys::{Event, HtmlCanvasElement, WebGl2RenderingContext, WebGlProgram, We
 
 mod app;
 mod polyline;
+mod scribe;
 
 fn main() -> Result<(), JsValue> {
     wasm_log::init(wasm_log::Config::default());
@@ -20,20 +21,20 @@ fn main() -> Result<(), JsValue> {
         .unwrap()
         .dyn_into::<WebGl2RenderingContext>()?;
 
-    let app_state = Rc::new(AppState::new(&context)?);
+    let app_state = Rc::new(RefCell::new(AppState::new(&context)?));
 
     let onresize = {
         let canvas = canvas.clone();
         let context = context.clone();
         let app_state = app_state.clone();
         Closure::<dyn FnMut(_)>::new(move |_event: Event| {
-            app_state.on_resize(&canvas, &context);
+            app_state.borrow_mut().on_resize(&canvas, &context);
         })
     };
     window().add_event_listener_with_callback("resize", onresize.as_ref().unchecked_ref())?;
     onresize.forget();
 
-    app_state.on_resize(&canvas, &context);
+    app_state.borrow_mut().on_resize(&canvas, &context);
 
     let f = Rc::new(RefCell::<Option<Closure<dyn FnMut()>>>::new(None));
     let g = f.clone();
@@ -41,7 +42,7 @@ fn main() -> Result<(), JsValue> {
     {
         let context = context.clone();
         *g.borrow_mut() = Some(Closure::<dyn FnMut()>::new(move || {
-            app_state.draw(&context);
+            app_state.borrow_mut().draw(&context);
 
             request_animation_frame(f.borrow().as_ref().unwrap());
         }));
