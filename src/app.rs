@@ -1,6 +1,6 @@
-use glam::{Mat3, Mat4, Vec2, vec2, vec3};
+use glam::{Mat3, Mat4, Vec2, vec2};
 use wasm_bindgen::prelude::*;
-use web_sys::{Event, HtmlCanvasElement, KeyboardEvent, WebGl2RenderingContext, window};
+use web_sys::{HtmlCanvasElement, KeyboardEvent, WebGl2RenderingContext, window};
 
 use crate::{
     document,
@@ -77,7 +77,7 @@ impl AppState {
         self.player_ship.transform *= Mat3::from_translation(self.player_ship.vel * dt);
 
         if self.thrust {
-            self.player_ship.vel += self.player_ship.forward() * 15.0 * dt;
+            self.player_ship.vel += self.player_ship.forward() * 30.0 * dt;
         }
         if self.turn_left {
             self.player_ship.transform *= Mat3::from_angle(dt);
@@ -117,13 +117,13 @@ impl AppState {
                         &[p + vec2(-1.0, 0.0), p + vec2(1.0, 0.0)],
                         1.0,
                         false,
-                        Color::PALE_BLUE,
+                        Color::PaleBlue,
                     );
                     self.scribe.draw_poly_line(
                         &[p + vec2(0.0, -1.0), p + vec2(0.0, 1.0)],
                         1.0,
                         false,
-                        Color::PALE_BLUE,
+                        Color::PaleBlue,
                     );
                 }
             }
@@ -135,13 +135,13 @@ impl AppState {
             let p = |v| self.player_ship.transform.transform_point2(v);
 
             let ship = [p(vec2(-7.0, -7.0)), p(vec2(7.0, -7.0)), p(vec2(0.0, 7.0))];
-            self.scribe.draw_poly_line(&ship, 1.0, true, Color::WHITE);
+            self.scribe.draw_poly_line(&ship, 1.0, true, Color::White);
 
             // draw engine exhaust
             if self.thrust {
                 let exhaust = [p(vec2(-3.0, -8.0)), p(vec2(3.0, -8.0)), p(vec2(0.0, -12.0))];
                 self.scribe
-                    .draw_poly_line(&exhaust, 1.0, true, Color::YELLOW);
+                    .draw_poly_line(&exhaust, 1.0, true, Color::Yellow);
             }
         }
         self.scribe.render(transform);

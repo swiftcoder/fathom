@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use glam::{Mat4, Vec2, Vec4, vec4};
-use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlVertexArrayObject};
+use web_sys::{WebGl2RenderingContext, WebGlBuffer, WebGlProgram, WebGlVertexArrayObject};
 
 use crate::{
     compile_shader, link_program, polyline::polyline_to_triangles, reinterpret_cast_slice,
@@ -9,17 +9,17 @@ use crate::{
 
 #[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy)]
 pub enum Color {
-    WHITE,
-    YELLOW,
-    PALE_BLUE,
+    White,
+    Yellow,
+    PaleBlue,
 }
 
 impl Color {
     pub fn to_gl(&self) -> Vec4 {
         match self {
-            Color::WHITE => Vec4::ONE,
-            Color::YELLOW => vec4(1.0, 1.0, 0.0, 1.0),
-            Color::PALE_BLUE => vec4(0.6, 0.6, 0.8, 1.0),
+            Color::White => Vec4::ONE,
+            Color::Yellow => vec4(1.0, 1.0, 0.0, 1.0),
+            Color::PaleBlue => vec4(0.6, 0.6, 0.8, 1.0),
         }
     }
 }
@@ -28,6 +28,7 @@ pub struct Scribe {
     context: WebGl2RenderingContext,
     program: WebGlProgram,
     vao: WebGlVertexArrayObject,
+    buffer: WebGlBuffer,
     vertices: HashMap<Color, Vec<Vec2>>,
 }
 
@@ -75,10 +76,28 @@ impl Scribe {
             .unwrap();
         context.bind_vertex_array(Some(&vao));
 
+        let buffer = context
+            .create_buffer()
+            .ok_or("Failed to create buffer")
+            .unwrap();
+        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer));
+
+        let position_attribute_location = context.get_attrib_location(&program, "position");
+        context.vertex_attrib_pointer_with_i32(
+            position_attribute_location as u32,
+            2,
+            WebGl2RenderingContext::FLOAT,
+            false,
+            std::mem::size_of::<f32>() as i32 * 2,
+            0,
+        );
+        context.enable_vertex_attrib_array(position_attribute_location as u32);
+
         Self {
             context: context.clone(),
             program,
             vao,
+            buffer,
             vertices: HashMap::new(),
         }
     }
@@ -92,13 +111,8 @@ impl Scribe {
         self.context.bind_vertex_array(Some(&self.vao));
         self.context.use_program(Some(&self.program));
 
-        let buffer = self
-            .context
-            .create_buffer()
-            .ok_or("Failed to create buffer")
-            .unwrap();
         self.context
-            .bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer));
+            .bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&self.buffer));
 
         for (color, vertices) in &self.vertices {
             unsafe {
@@ -111,19 +125,6 @@ impl Scribe {
                     WebGl2RenderingContext::STATIC_DRAW,
                 );
             }
-
-            let position_attribute_location =
-                self.context.get_attrib_location(&self.program, "position");
-            self.context.vertex_attrib_pointer_with_i32(
-                position_attribute_location as u32,
-                2,
-                WebGl2RenderingContext::FLOAT,
-                false,
-                std::mem::size_of::<f32>() as i32 * 2,
-                0,
-            );
-            self.context
-                .enable_vertex_attrib_array(position_attribute_location as u32);
 
             self.context.uniform_matrix4fv_with_f32_array(
                 self.context
