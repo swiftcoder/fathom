@@ -11,6 +11,7 @@ use crate::{
 pub enum Color {
     WHITE,
     YELLOW,
+    PALE_BLUE,
 }
 
 impl Color {
@@ -18,6 +19,7 @@ impl Color {
         match self {
             Color::WHITE => Vec4::ONE,
             Color::YELLOW => vec4(1.0, 1.0, 0.0, 1.0),
+            Color::PALE_BLUE => vec4(0.6, 0.6, 0.8, 1.0),
         }
     }
 }
@@ -86,7 +88,7 @@ impl Scribe {
         self.vertices.entry(color).or_default().extend(&vertices);
     }
 
-    pub fn render(&mut self, aspect: f32) {
+    pub fn render(&mut self, transform: Mat4) {
         self.context.bind_vertex_array(Some(&self.vao));
         self.context.use_program(Some(&self.program));
 
@@ -123,20 +125,12 @@ impl Scribe {
             self.context
                 .enable_vertex_attrib_array(position_attribute_location as u32);
 
-            let m = Mat4::orthographic_rh_gl(
-                -100.0 * aspect,
-                100.0 * aspect,
-                -100.0,
-                100.0,
-                -10.0,
-                10.0,
-            );
             self.context.uniform_matrix4fv_with_f32_array(
                 self.context
                     .get_uniform_location(&self.program, "transform")
                     .as_ref(),
                 false,
-                m.as_ref(),
+                transform.as_ref(),
             );
             self.context.uniform4fv_with_f32_array(
                 self.context
@@ -145,11 +139,8 @@ impl Scribe {
                 &color.to_gl().to_array(),
             );
 
-            self.context.draw_arrays(
-                WebGl2RenderingContext::TRIANGLES,
-                0,
-                vertices.len() as i32,
-            );
+            self.context
+                .draw_arrays(WebGl2RenderingContext::TRIANGLES, 0, vertices.len() as i32);
         }
 
         self.vertices.clear();

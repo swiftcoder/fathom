@@ -1,4 +1,4 @@
-use glam::{Mat3, Vec2, vec2};
+use glam::{Mat3, Mat4, Vec2, vec2, vec3};
 use wasm_bindgen::prelude::*;
 use web_sys::{Event, HtmlCanvasElement, KeyboardEvent, WebGl2RenderingContext, window};
 
@@ -88,6 +88,9 @@ impl AppState {
 
         // gravity
         self.player_ship.vel += vec2(0.0, -10.0) * dt;
+
+        // clamp speed
+        self.player_ship.vel = self.player_ship.vel.clamp_length_max(20.0);
     }
 
     pub fn draw(&mut self, context: &WebGl2RenderingContext) {
@@ -95,10 +98,37 @@ impl AppState {
         let aspect = document.body().unwrap().client_width() as f32
             / document.body().unwrap().client_height() as f32;
 
+        let transform =
+            Mat4::orthographic_rh_gl(-100.0 * aspect, 100.0 * aspect, -100.0, 100.0, -10.0, 10.0)
+                * Mat4::from_translation(-self.player_ship.pos().extend(0.0));
+
         context.clear_color(0.0, 0.0, 0.0, 1.0);
         context.clear(
             WebGl2RenderingContext::COLOR_BUFFER_BIT | WebGl2RenderingContext::DEPTH_BUFFER_BIT,
         );
+
+        // draw background crosses
+        {
+            let c = (self.player_ship.pos() / 40.0).floor() * 40.0;
+            for i in 0..20 {
+                for j in 0..20 {
+                    let p = c + vec2(i as f32 - 9.0, j as f32 - 9.0) * 40.0;
+                    self.scribe.draw_poly_line(
+                        &[p + vec2(-1.0, 0.0), p + vec2(1.0, 0.0)],
+                        1.0,
+                        false,
+                        Color::PALE_BLUE,
+                    );
+                    self.scribe.draw_poly_line(
+                        &[p + vec2(0.0, -1.0), p + vec2(0.0, 1.0)],
+                        1.0,
+                        false,
+                        Color::PALE_BLUE,
+                    );
+                }
+            }
+            self.scribe.render(transform);
+        }
 
         // draw player ship
         {
@@ -114,7 +144,6 @@ impl AppState {
                     .draw_poly_line(&exhaust, 1.0, true, Color::YELLOW);
             }
         }
-
-        self.scribe.render(aspect);
+        self.scribe.render(transform);
     }
 }
