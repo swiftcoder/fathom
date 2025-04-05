@@ -2,11 +2,17 @@ use std::{cell::RefCell, rc::Rc};
 
 use app::AppState;
 use wasm_bindgen::prelude::*;
-use web_sys::{Event, HtmlCanvasElement, WebGl2RenderingContext, WebGlProgram, WebGlShader};
+use web_sys::{
+    Event, HtmlCanvasElement, KeyboardEvent, WebGl2RenderingContext, WebGlProgram, WebGlShader,
+};
+use web_time::{Duration, Instant};
 
 mod app;
 mod polyline;
 mod scribe;
+
+const UPDATE_RATE: usize = 120;
+const UPDATE_DURATION: f32 = 1.0 / UPDATE_RATE as f32;
 
 fn main() -> Result<(), JsValue> {
     wasm_log::init(wasm_log::Config::default());
@@ -36,12 +42,39 @@ fn main() -> Result<(), JsValue> {
 
     app_state.borrow_mut().on_resize(&canvas, &context);
 
+    let keydown = {
+        let app_state = app_state.clone();
+
+        Closure::<dyn FnMut(_)>::new(move |event: KeyboardEvent| {
+            app_state.borrow_mut().on_keydown(event);
+        })
+    };
+    document().add_event_listener_with_callback("keydown", keydown.as_ref().unchecked_ref())?;
+    keydown.forget();
+
+    let keyup = {
+        let app_state = app_state.clone();
+
+        Closure::<dyn FnMut(_)>::new(move |event: KeyboardEvent| {
+            app_state.borrow_mut().on_keyup(event);
+        })
+    };
+    document().add_event_listener_with_callback("keyup", keyup.as_ref().unchecked_ref())?;
+    keyup.forget();
+
     let f = Rc::new(RefCell::<Option<Closure<dyn FnMut()>>>::new(None));
     let g = f.clone();
 
     {
+        let mut last = Instant::now();
         let context = context.clone();
         *g.borrow_mut() = Some(Closure::<dyn FnMut()>::new(move || {
+            let now = Instant::now();
+            while now.duration_since(last).as_secs_f32() > UPDATE_DURATION {
+                app_state.borrow_mut().fixed_update(UPDATE_DURATION);
+                last += Duration::from_secs_f32(UPDATE_DURATION);
+            }
+
             app_state.borrow_mut().draw(&context);
 
             request_animation_frame(f.borrow().as_ref().unwrap());
