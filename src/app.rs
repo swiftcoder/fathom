@@ -26,6 +26,11 @@ impl Entity {
     }
 }
 
+enum GameState {
+    InGame,
+    GameOver,
+}
+
 pub struct AppState {
     scribe: Scribe,
     post_process: PostProcessor,
@@ -36,6 +41,9 @@ pub struct AppState {
     player_ship: Entity,
     mine_shaft: MineShaft,
     max_depth: usize,
+    health: usize,
+    invulnerability_ticks: usize,
+    game_state: GameState,
 }
 
 const FONT: &[u8] = include_bytes!("../assets/KarmaticArcade-6Yrp1.ttf");
@@ -55,6 +63,9 @@ impl AppState {
             },
             mine_shaft: MineShaft::new(760.0, 340.0),
             max_depth: 0,
+            health: 5,
+            invulnerability_ticks: 0,
+            game_state: GameState::InGame,
         })
     }
 
@@ -78,6 +89,13 @@ impl AppState {
             "KeyD" | "ArrowRight" => self.turn_right = true,
             _ => log::info!("key down {:?}", key.code()),
         }
+
+        if let GameState::GameOver = self.game_state {
+            self.game_state = GameState::InGame;
+            self.player_ship.transform = Mat3::IDENTITY;
+            self.max_depth = 0;
+            self.health = 5;
+        }
     }
 
     pub fn on_keyup(&mut self, key: KeyboardEvent) {
@@ -99,7 +117,7 @@ impl AppState {
             if let Some(n) = self.mine_shaft.normal(self.player_ship.pos()) {
                 self.player_ship.transform =
                     Mat3::from_translation(n * (7.0 - distance)) * self.player_ship.transform;
-                
+
                 // log::info!("penetration {}", distance + 7.0);
 
                 let vn = self.player_ship.vel.dot(n) * n;
@@ -115,7 +133,26 @@ impl AppState {
                 let friction_vt = vt * (1.0 - FRICTION);
 
                 self.player_ship.vel = reflected_vn + friction_vt;
+
+                // if we aren't invulnerable, apply damage
+                if self.invulnerability_ticks == 0 && self.health > 0 {
+                    self.health -= 1;
+
+                    // if we run out of health, game over. Otherwise give us 2 seconds of invulnerability
+                    if self.health < 1 {
+                        self.game_state = GameState::GameOver;
+                        self.player_ship.transform = Mat3::from_translation(Vec2::ZERO);
+                        self.health = 5;
+                    } else {
+                        self.invulnerability_ticks = 2 * 120;
+                    }
+                }
             }
+        }
+
+        // if we are invulnerable, count it down
+        if self.invulnerability_ticks > 0 {
+            self.invulnerability_ticks -= 1;
         }
 
         // handle player input
@@ -211,6 +248,22 @@ impl AppState {
             Align::Left,
             &format!("{} meters", self.max_depth),
         );
+
+        self.text.draw(
+            pos.x - 120.0,
+            pos.y - 80.0,
+            6.0,
+            Align::Left,
+            &format!("Health {}", "I".repeat(self.health)),
+        );
+
+        if let GameState::GameOver = self.game_state {
+            self.text
+                .draw(pos.x, pos.y + 10.0, 18.0, Align::Center, "Game Over :(");
+
+            self.text
+                .draw(pos.x, pos.y - 20.0, 4.0, Align::Center, "Press any key to restart");
+        }
 
         self.text.render(transform);
 
