@@ -23,8 +23,12 @@ impl MineShaft {
     }
 
     /// Signed distance from vertical shaft wall
-    fn shaft_distance(&self, p: Vec2) -> f32 {
-        p.x.abs() - self.shaft_radius
+    fn shaft_distance(&self, p: Vec2, radius: f32) -> f32 {
+        (p.x - (p.y * 0.01).sin() * 35.0).abs() - radius
+    }
+
+    fn secondary_shaft_distance(&self, p: Vec2) -> f32 {
+        self.shaft_distance(p, 14.0)
     }
 
     /// Signed distance from a circular starting zone
@@ -39,11 +43,12 @@ impl MineShaft {
 
     /// Final combined distance field at a point
     pub fn distance(&self, p: Vec2) -> f32 {
-        let shaft = self.shaft_distance(p);
+        let shaft = self.shaft_distance(p, self.shaft_radius);
         let noise = self.noise(p);
         let starting_zone = self.starting_zone_distance(p);
+        let shaft_clear_zone = self.secondary_shaft_distance(p);
 
-        f32::min(starting_zone, shaft + noise) // Subtract starting zone
+        f32::min(shaft_clear_zone, f32::min(starting_zone, shaft + noise))
     }
 
     pub fn marching_squares(&self, resolution: f32, center: Vec2) -> Vec<Vec2> {
