@@ -53,7 +53,7 @@ impl AppState {
                 transform: Mat3::IDENTITY,
                 vel: Vec2::ZERO,
             },
-            mine_shaft: MineShaft::new(340.0, 340.0),
+            mine_shaft: MineShaft::new(760.0, 340.0),
             max_depth: 0,
         })
     }
@@ -93,6 +93,32 @@ impl AppState {
         self.player_ship.transform =
             Mat3::from_translation(self.player_ship.vel * dt) * self.player_ship.transform;
 
+        // handle collision
+        let distance = self.mine_shaft.distance(self.player_ship.pos());
+        if distance < 7.0 {
+            if let Some(n) = self.mine_shaft.normal(self.player_ship.pos()) {
+                self.player_ship.transform =
+                    Mat3::from_translation(n * (7.0 - distance)) * self.player_ship.transform;
+                
+                // log::info!("penetration {}", distance + 7.0);
+
+                let vn = self.player_ship.vel.dot(n) * n;
+                let vt = self.player_ship.vel - vn;
+
+                const RESTITUTION: f32 = 0.5;
+                const FRICTION: f32 = 0.125;
+
+                // Reflect the normal part with restitution (bounce factor)
+                let reflected_vn = -vn * RESTITUTION;
+
+                // Apply friction to the tangential (sliding) part
+                let friction_vt = vt * (1.0 - FRICTION);
+
+                self.player_ship.vel = reflected_vn + friction_vt;
+            }
+        }
+
+        // handle player input
         if self.thrust {
             self.player_ship.vel += self.player_ship.forward() * 30.0 * dt;
         }
@@ -109,6 +135,7 @@ impl AppState {
         // clamp speed
         self.player_ship.vel = self.player_ship.vel.clamp_length_max(40.0);
 
+        // calculate score
         self.max_depth = self.max_depth.max(-self.player_ship.pos().y as usize);
     }
 
@@ -136,7 +163,7 @@ impl AppState {
             for i in 0..20 {
                 for j in 0..20 {
                     let p = grid_locked_pos + vec2(i as f32 - 9.0, j as f32 - 9.0) * 40.0;
-                    if self.mine_shaft.distance(p) < 0.0 {
+                    if self.mine_shaft.distance(p) > 0.0 {
                         self.scribe.draw_poly_line(
                             &[p + vec2(-1.0, 0.0), p + vec2(1.0, 0.0)],
                             1.0,

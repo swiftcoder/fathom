@@ -18,13 +18,13 @@ impl MineShaft {
             shaft_radius: 60.0,
             noise_scale: 1.0 / 80.0,
             noise_amplitude: 60.0,
-            noise: Perlin::new(0),
+            noise: Perlin::new(1),
         }
     }
 
     /// Signed distance from vertical shaft wall
     fn shaft_distance(&self, p: Vec2, radius: f32) -> f32 {
-        (p.x - (p.y * 0.01).sin() * 35.0).abs() - radius
+        radius - (p.x - (p.y * 0.01).sin() * 35.0).abs()
     }
 
     fn secondary_shaft_distance(&self, p: Vec2) -> f32 {
@@ -33,7 +33,7 @@ impl MineShaft {
 
     /// Signed distance from a circular starting zone
     fn starting_zone_distance(&self, p: Vec2) -> f32 {
-        p.length() - 100.0
+        100.0 - p.length()
     }
 
     fn noise(&self, mut p: Vec2) -> f32 {
@@ -48,7 +48,14 @@ impl MineShaft {
         let starting_zone = self.starting_zone_distance(p);
         let shaft_clear_zone = self.secondary_shaft_distance(p);
 
-        f32::min(shaft_clear_zone, f32::min(starting_zone, shaft + noise))
+        f32::max(shaft_clear_zone, f32::max(starting_zone, shaft - noise))
+    }
+
+    pub fn normal(&self, p: Vec2) -> Option<Vec2> {
+        let eps = 0.05;
+        let dx = self.distance(p + vec2(eps, 0.0)) - self.distance(p - vec2(eps, 0.0));
+        let dy = self.distance(p + vec2(0.0, eps)) - self.distance(p - vec2(0.0, eps));
+        vec2(dx, dy).try_normalize()
     }
 
     pub fn marching_squares(&self, resolution: f32, center: Vec2) -> Vec<Vec2> {
