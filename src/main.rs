@@ -9,12 +9,16 @@ use web_time::{Duration, Instant};
 
 mod app;
 mod polyline;
+mod post_processor;
 mod scribe;
+mod shader;
+mod texture;
 
 const UPDATE_RATE: usize = 120;
 const UPDATE_DURATION: f32 = 1.0 / UPDATE_RATE as f32;
 
 fn main() -> Result<(), JsValue> {
+    workflow_panic_hook::set_once(workflow_panic_hook::Type::Console);
     wasm_log::init(wasm_log::Config::default());
 
     log::info!("Hello, world!");
@@ -114,6 +118,7 @@ pub fn compile_shader(
     let shader = context
         .create_shader(shader_type)
         .ok_or_else(|| String::from("Unable to create shader object"))?;
+
     context.shader_source(&shader, source);
     context.compile_shader(&shader);
 
@@ -124,9 +129,11 @@ pub fn compile_shader(
     {
         Ok(shader)
     } else {
-        Err(context
+        let log = context
             .get_shader_info_log(&shader)
-            .unwrap_or_else(|| String::from("Unknown error creating shader")))
+            .unwrap_or_else(|| String::from("Unknown error creating shader"));
+        log::error!("failed to compile shader: {log}");
+        Err(log)
     }
 }
 
@@ -150,9 +157,11 @@ pub fn link_program(
     {
         Ok(program)
     } else {
-        Err(context
+        let log = context
             .get_program_info_log(&program)
-            .unwrap_or_else(|| String::from("Unknown error creating program object")))
+            .unwrap_or_else(|| String::from("Unknown error creating program object"));
+        log::error!("failed to link program: {log}");
+        Err(log)
     }
 }
 

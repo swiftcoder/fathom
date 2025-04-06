@@ -4,6 +4,7 @@ use web_sys::{HtmlCanvasElement, KeyboardEvent, WebGl2RenderingContext, window};
 
 use crate::{
     document,
+    post_processor::PostProcessor,
     scribe::{Color, Scribe},
 };
 
@@ -24,6 +25,7 @@ impl Entity {
 
 pub struct AppState {
     scribe: Scribe,
+    post_process: PostProcessor,
     thrust: bool,
     turn_left: bool,
     turn_right: bool,
@@ -34,6 +36,7 @@ impl AppState {
     pub fn new(context: &WebGl2RenderingContext) -> Result<Self, JsValue> {
         Ok(Self {
             scribe: Scribe::new(context),
+            post_process: PostProcessor::new(context)?,
             thrust: false,
             turn_left: false,
             turn_right: false,
@@ -44,7 +47,7 @@ impl AppState {
         })
     }
 
-    pub fn on_resize(&self, canvas: &HtmlCanvasElement, context: &WebGl2RenderingContext) {
+    pub fn on_resize(&mut self, canvas: &HtmlCanvasElement, context: &WebGl2RenderingContext) {
         let device_pixel_ratio = window().unwrap().device_pixel_ratio();
         let document = document();
         let w = document.body().unwrap().client_width() as f64 * device_pixel_ratio;
@@ -53,6 +56,8 @@ impl AppState {
         canvas.set_width(w as u32);
         canvas.set_height(h as u32);
         context.viewport(0, 0, w as i32, h as i32);
+
+        self.post_process.on_resize(w as i32, h as i32);
     }
 
     pub fn on_keydown(&mut self, key: KeyboardEvent) {
@@ -102,6 +107,8 @@ impl AppState {
             Mat4::orthographic_rh_gl(-100.0 * aspect, 100.0 * aspect, -100.0, 100.0, -10.0, 10.0)
                 * Mat4::from_translation(-self.player_ship.pos().extend(0.0));
 
+        self.post_process.start_capture();
+
         context.clear_color(0.0, 0.0, 0.0, 1.0);
         context.clear(
             WebGl2RenderingContext::COLOR_BUFFER_BIT | WebGl2RenderingContext::DEPTH_BUFFER_BIT,
@@ -145,5 +152,7 @@ impl AppState {
             }
         }
         self.scribe.render(transform);
+
+        self.post_process.finish();
     }
 }

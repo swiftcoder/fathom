@@ -15,12 +15,15 @@ web-sys = { version = "0.3", features = [
     'Event',
     'HtmlCanvasElement',
     'KeyboardEvent',
-    'WebGlBuffer',
-    'WebGlVertexArrayObject',
     'WebGl2RenderingContext',
+    'WebGlBuffer',
+    'WebGlFramebuffer',
     'WebGlProgram',
     'WebGlShader',
+    'WebGlTexture',
     'WebGlUniformLocation',
+    'WebGlVertexArrayObject',
     'Window',
 ] }
 web-time = "1.1.0"
+workflow-panic-hook = "0.18.0"
