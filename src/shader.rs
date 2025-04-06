@@ -1,3 +1,4 @@
+use glam::Mat4;
 use web_sys::{WebGl2RenderingContext, WebGlProgram};
 
 use crate::{compile_shader, link_program, texture::Texture};
@@ -46,6 +47,17 @@ impl Shader {
                 .get_uniform_location(&self.program, name)
                 .as_ref(),
             value,
+        );
+    }
+
+    pub fn uniform_matrix4(&self, name: &str, value: Mat4) {
+        self.context.use_program(Some(&self.program));
+        self.context.uniform_matrix4fv_with_f32_array(
+            self.context
+                .get_uniform_location(&self.program, name)
+                .as_ref(),
+            false,
+            value.as_ref(),
         );
     }
 }

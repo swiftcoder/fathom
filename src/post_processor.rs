@@ -22,9 +22,27 @@ pub struct PostProcessor {
 
 impl PostProcessor {
     pub fn new(context: &WebGl2RenderingContext) -> Result<Self, JsValue> {
-        let scene_texture = Texture::new(context, 1, 1);
-        let ping_texture = Texture::new(context, 1, 1);
-        let pong_texture = Texture::new(context, 1, 1);
+        let scene_texture = Texture::new(
+            context,
+            1,
+            1,
+            WebGl2RenderingContext::RGBA,
+            WebGl2RenderingContext::UNSIGNED_BYTE,
+        );
+        let ping_texture = Texture::new(
+            context,
+            1,
+            1,
+            WebGl2RenderingContext::RGBA,
+            WebGl2RenderingContext::UNSIGNED_BYTE,
+        );
+        let pong_texture = Texture::new(
+            context,
+            1,
+            1,
+            WebGl2RenderingContext::RGBA,
+            WebGl2RenderingContext::UNSIGNED_BYTE,
+        );
 
         let scene_fbo = context
             .create_framebuffer()
@@ -66,6 +84,8 @@ impl PostProcessor {
             Some(&pong_texture.texture),
             0,
         );
+
+        context.bind_framebuffer(WebGl2RenderingContext::FRAMEBUFFER, None);
 
         let fullscreen_quad_vs = r##"#version 300 es
     
@@ -266,9 +286,9 @@ impl PostProcessor {
         self.w = w;
         self.h = h;
 
-        self.scene_texture.resize(w, h);
-        self.ping_texture.resize(w, h);
-        self.pong_texture.resize(w, h);
+        self.scene_texture.write(w, h, None);
+        self.ping_texture.write(w, h, None);
+        self.pong_texture.write(w, h, None);
     }
 
     pub fn start_capture(&self) {

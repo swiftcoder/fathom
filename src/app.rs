@@ -4,9 +4,11 @@ use web_sys::{HtmlCanvasElement, KeyboardEvent, WebGl2RenderingContext, window};
 
 use crate::{
     document,
+    font::Font,
     mine_shaft::MineShaft,
     post_processor::PostProcessor,
     scribe::{Color, Scribe},
+    text::{Align, Text},
 };
 
 pub struct Entity {
@@ -27,18 +29,23 @@ impl Entity {
 pub struct AppState {
     scribe: Scribe,
     post_process: PostProcessor,
+    text: Text,
     thrust: bool,
     turn_left: bool,
     turn_right: bool,
     player_ship: Entity,
     mine_shaft: MineShaft,
+    max_depth: usize,
 }
+
+const FONT: &[u8] = include_bytes!("../assets/KarmaticArcade-6Yrp1.ttf");
 
 impl AppState {
     pub fn new(context: &WebGl2RenderingContext) -> Result<Self, JsValue> {
         Ok(Self {
             scribe: Scribe::new(context),
             post_process: PostProcessor::new(context)?,
+            text: Text::new(context, Font::from_slice(&FONT, 0)),
             thrust: false,
             turn_left: false,
             turn_right: false,
@@ -47,6 +54,7 @@ impl AppState {
                 vel: Vec2::ZERO,
             },
             mine_shaft: MineShaft::new(340.0, 340.0),
+            max_depth: 0,
         })
     }
 
@@ -100,6 +108,8 @@ impl AppState {
 
         // clamp speed
         self.player_ship.vel = self.player_ship.vel.clamp_length_max(40.0);
+
+        self.max_depth = self.max_depth.max(-self.player_ship.pos().y as usize);
     }
 
     pub fn draw(&mut self, context: &WebGl2RenderingContext) {
@@ -113,12 +123,13 @@ impl AppState {
 
         self.post_process.start_capture();
 
-        context.clear_color(0.0, 0.0, 0.0, 1.0);
+        context.clear_color(0.0, 0.0, 0.5, 1.0);
         context.clear(
             WebGl2RenderingContext::COLOR_BUFFER_BIT | WebGl2RenderingContext::DEPTH_BUFFER_BIT,
         );
 
-        let grid_locked_pos = (self.player_ship.pos() / 40.0).floor() * 40.0;
+        let pos = self.player_ship.pos();
+        let grid_locked_pos = (pos / 40.0).floor() * 40.0;
 
         // draw background crosses
         {
@@ -165,6 +176,16 @@ impl AppState {
             }
         }
         self.scribe.render(transform);
+
+        self.text.draw(
+            pos.x - 120.0,
+            pos.y + 80.0,
+            6.0,
+            Align::Left,
+            &format!("{} meters", self.max_depth),
+        );
+
+        self.text.render(transform);
 
         self.post_process.finish();
     }

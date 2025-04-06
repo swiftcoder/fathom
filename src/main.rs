@@ -8,11 +8,13 @@ use web_sys::{
 use web_time::{Duration, Instant};
 
 mod app;
+mod font;
 mod mine_shaft;
 mod polyline;
 mod post_processor;
 mod scribe;
 mod shader;
+mod text;
 mod texture;
 
 const UPDATE_RATE: usize = 120;
@@ -169,5 +171,6 @@ pub fn link_program(
 pub fn reinterpret_cast_slice<S, T>(input: &[S]) -> &[T] {
     let length_in_bytes = input.len() * std::mem::size_of::<S>();
     let desired_length = length_in_bytes / std::mem::size_of::<T>();
+    // log::info!("size_of T {}, total size {}", std::mem::size_of::<T>(), length_in_bytes);
     unsafe { std::slice::from_raw_parts(input.as_ptr() as *const T, desired_length) }
 }
