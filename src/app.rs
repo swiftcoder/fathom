@@ -234,8 +234,10 @@ impl AppState {
         {
             let p = |v| self.player_ship.transform.transform_point2(v);
 
-            let ship = [p(vec2(-7.0, -7.0)), p(vec2(7.0, -7.0)), p(vec2(0.0, 7.0))];
-            self.scribe.draw_poly_line(&ship, 1.0, true, Color::White);
+            if self.invulnerability_ticks % 30 < 15 {
+                let ship = [p(vec2(-7.0, -7.0)), p(vec2(7.0, -7.0)), p(vec2(0.0, 7.0))];
+                self.scribe.draw_poly_line(&ship, 1.0, true, Color::White);
+            }
 
             // draw engine exhaust
             if self.thrust {
