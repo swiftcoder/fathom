@@ -27,6 +27,7 @@ impl Entity {
 }
 
 enum GameState {
+    SplashScreen,
     InGame,
     GameOver,
 }
@@ -65,7 +66,7 @@ impl AppState {
             max_depth: 0,
             health: 5,
             invulnerability_ticks: 0,
-            game_state: GameState::InGame,
+            game_state: GameState::SplashScreen,
         })
     }
 
@@ -90,11 +91,15 @@ impl AppState {
             _ => log::info!("key down {:?}", key.code()),
         }
 
-        if let GameState::GameOver = self.game_state {
-            self.game_state = GameState::InGame;
-            self.player_ship.transform = Mat3::IDENTITY;
-            self.max_depth = 0;
-            self.health = 5;
+        match self.game_state {
+            GameState::GameOver | GameState::SplashScreen => {
+                self.game_state = GameState::InGame;
+                self.player_ship.transform = Mat3::IDENTITY;
+                self.player_ship.vel = Vec2::ZERO;
+                self.max_depth = 0;
+                self.health = 5;
+            }
+            _ => {}
         }
     }
 
@@ -257,12 +262,32 @@ impl AppState {
             &format!("Health {}", "I".repeat(self.health)),
         );
 
-        if let GameState::GameOver = self.game_state {
-            self.text
-                .draw(pos.x, pos.y + 10.0, 18.0, Align::Center, "Game Over :(");
+        match self.game_state {
+            GameState::SplashScreen => {
+                self.text
+                    .draw(pos.x, pos.y + 20.0, 18.0, Align::Center, "FATHOM");
 
-            self.text
-                .draw(pos.x, pos.y - 20.0, 4.0, Align::Center, "Press any key to restart");
+                self.text.draw(
+                    pos.x,
+                    pos.y - 30.0,
+                    4.0,
+                    Align::Center,
+                    "Press any key to start",
+                );
+            }
+            GameState::GameOver => {
+                self.text
+                    .draw(pos.x, pos.y + 20.0, 18.0, Align::Center, "Game Over :(");
+
+                self.text.draw(
+                    pos.x,
+                    pos.y - 30.0,
+                    4.0,
+                    Align::Center,
+                    "Press any key to restart",
+                );
+            }
+            _ => {}
         }
 
         self.text.render(transform);

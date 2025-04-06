@@ -18,7 +18,7 @@ impl MineShaft {
             shaft_radius: 60.0,
             noise_scale: 1.0 / 80.0,
             noise_amplitude: 60.0,
-            noise: Perlin::new(1),
+            noise: Perlin::new(3),
         }
     }
 
