@@ -15,6 +15,7 @@ pub struct PostProcessor {
     blur_shader_h: Shader,
     blur_shader_v: Shader,
     composite_shader: Shader,
+    crt_shader: Shader,
     w: i32,
     h: i32,
 }
@@ -194,6 +195,55 @@ impl PostProcessor {
         "##,
         );
 
+        let crt_shader = Shader::new(
+            context,
+            fullscreen_quad_vs,
+            r##"#version 300 es
+    
+        precision highp float;
+
+        uniform sampler2D u_texture;
+
+        in vec2 v_uv;
+
+        out vec4 outColor;
+        
+        float curvature = 3.0;
+
+        vec2 curveRemap(vec2 uv) {
+            uv = uv * 2.0 - 1.0;
+            vec2 offset = abs(uv.yx) / vec2(curvature, curvature);
+            uv = uv + uv * offset * offset;
+            uv = uv * 0.5 + 0.5;
+            return uv;
+        }
+
+        void main() {
+            vec2 uv = curveRemap(v_uv);
+
+            vec3 color = texture(u_texture, uv).rgb;
+
+            // Slight chromatic aberration
+            float aberr = 0.001;
+            float r = texture(u_texture, uv + vec2(aberr, 0.0)).r;
+            float g = texture(u_texture, uv).g;
+            float b = texture(u_texture, uv - vec2(aberr, 0.0)).b;
+            color = vec3(r, g, b);
+
+            // Horizontal scanlines
+            float scanline = sin(uv.y * 200.0 * 2.0 * 3.14159) * 0.1;
+            color -= scanline;
+
+            // Vignette
+            float dist = distance(v_uv, vec2(0.5));
+            float vignette = pow(1.0 - dist, 1.5);
+            color *= vignette;
+
+            outColor = vec4(color, 1.0);
+        }
+        "##,
+        );
+
         Ok(Self {
             context: context.clone(),
             scene_fbo,
@@ -206,6 +256,7 @@ impl PostProcessor {
             blur_shader_h,
             blur_shader_v,
             composite_shader,
+            crt_shader,
             w: 1,
             h: 1,
         })
@@ -276,11 +327,19 @@ impl PostProcessor {
 
         // composite
         self.context
-            .bind_framebuffer(WebGl2RenderingContext::FRAMEBUFFER, None);
+            .bind_framebuffer(WebGl2RenderingContext::FRAMEBUFFER, Some(&self.pong_fbo));
         self.composite_shader
             .bind_texture("u_texture", 0, &self.scene_texture);
         self.composite_shader
             .bind_texture("u_blur", 1, &self.ping_texture);
+        self.context
+            .draw_arrays(WebGl2RenderingContext::TRIANGLE_STRIP, 0, 4);
+
+        // CRT effect
+        self.context
+            .bind_framebuffer(WebGl2RenderingContext::FRAMEBUFFER, None);
+        self.crt_shader
+            .bind_texture("u_texture", 0, &self.scene_texture);
         self.context
             .draw_arrays(WebGl2RenderingContext::TRIANGLE_STRIP, 0, 4);
     }

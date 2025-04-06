@@ -46,7 +46,7 @@ impl AppState {
                 transform: Mat3::IDENTITY,
                 vel: Vec2::ZERO,
             },
-            mine_shaft: MineShaft::new(280.0, 280.0),
+            mine_shaft: MineShaft::new(340.0, 340.0),
         })
     }
 

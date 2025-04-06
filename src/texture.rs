@@ -31,6 +31,16 @@ impl Texture {
             WebGl2RenderingContext::TEXTURE_MAG_FILTER,
             WebGl2RenderingContext::LINEAR as i32,
         );
+        context.tex_parameteri(
+            WebGl2RenderingContext::TEXTURE_2D,
+            WebGl2RenderingContext::TEXTURE_WRAP_S,
+            WebGl2RenderingContext::CLAMP_TO_EDGE as i32,
+        );
+        context.tex_parameteri(
+            WebGl2RenderingContext::TEXTURE_2D,
+            WebGl2RenderingContext::TEXTURE_WRAP_T,
+            WebGl2RenderingContext::CLAMP_TO_EDGE as i32,
+        );
         context.bind_texture(WebGl2RenderingContext::TEXTURE_2D, None);
 
         Self {
