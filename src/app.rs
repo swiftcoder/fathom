@@ -4,6 +4,7 @@ use web_sys::{HtmlCanvasElement, KeyboardEvent, WebGl2RenderingContext, window};
 
 use crate::{
     document,
+    mine_shaft::MineShaft,
     post_processor::PostProcessor,
     scribe::{Color, Scribe},
 };
@@ -30,6 +31,7 @@ pub struct AppState {
     turn_left: bool,
     turn_right: bool,
     player_ship: Entity,
+    mine_shaft: MineShaft,
 }
 
 impl AppState {
@@ -44,6 +46,7 @@ impl AppState {
                 transform: Mat3::IDENTITY,
                 vel: Vec2::ZERO,
             },
+            mine_shaft: MineShaft::new(280.0, 280.0),
         })
     }
 
@@ -79,7 +82,8 @@ impl AppState {
     }
 
     pub fn fixed_update(&mut self, dt: f32) {
-        self.player_ship.transform *= Mat3::from_translation(self.player_ship.vel * dt);
+        self.player_ship.transform =
+            Mat3::from_translation(self.player_ship.vel * dt) * self.player_ship.transform;
 
         if self.thrust {
             self.player_ship.vel += self.player_ship.forward() * 30.0 * dt;
@@ -95,7 +99,7 @@ impl AppState {
         self.player_ship.vel += vec2(0.0, -10.0) * dt;
 
         // clamp speed
-        self.player_ship.vel = self.player_ship.vel.clamp_length_max(20.0);
+        self.player_ship.vel = self.player_ship.vel.clamp_length_max(40.0);
     }
 
     pub fn draw(&mut self, context: &WebGl2RenderingContext) {
@@ -114,27 +118,36 @@ impl AppState {
             WebGl2RenderingContext::COLOR_BUFFER_BIT | WebGl2RenderingContext::DEPTH_BUFFER_BIT,
         );
 
+        let grid_locked_pos = (self.player_ship.pos() / 40.0).floor() * 40.0;
+
         // draw background crosses
         {
-            let c = (self.player_ship.pos() / 40.0).floor() * 40.0;
             for i in 0..20 {
                 for j in 0..20 {
-                    let p = c + vec2(i as f32 - 9.0, j as f32 - 9.0) * 40.0;
-                    self.scribe.draw_poly_line(
-                        &[p + vec2(-1.0, 0.0), p + vec2(1.0, 0.0)],
-                        1.0,
-                        false,
-                        Color::PaleBlue,
-                    );
-                    self.scribe.draw_poly_line(
-                        &[p + vec2(0.0, -1.0), p + vec2(0.0, 1.0)],
-                        1.0,
-                        false,
-                        Color::PaleBlue,
-                    );
+                    let p = grid_locked_pos + vec2(i as f32 - 9.0, j as f32 - 9.0) * 40.0;
+                    if self.mine_shaft.distance(p) < 0.0 {
+                        self.scribe.draw_poly_line(
+                            &[p + vec2(-1.0, 0.0), p + vec2(1.0, 0.0)],
+                            1.0,
+                            false,
+                            Color::PaleBlue,
+                        );
+                        self.scribe.draw_poly_line(
+                            &[p + vec2(0.0, -1.0), p + vec2(0.0, 1.0)],
+                            1.0,
+                            false,
+                            Color::PaleBlue,
+                        );
+                    }
                 }
             }
             self.scribe.render(transform);
+        }
+
+        // draw mine shaft
+        {
+            let vertices = self.mine_shaft.marching_squares(5.0, grid_locked_pos);
+            self.scribe.draw_lines(&vertices, 1.0, Color::White);
         }
 
         // draw player ship

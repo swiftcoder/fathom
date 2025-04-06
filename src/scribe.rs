@@ -4,7 +4,7 @@ use glam::{Mat4, Vec2, Vec4, vec4};
 use web_sys::{WebGl2RenderingContext, WebGlBuffer, WebGlProgram, WebGlVertexArrayObject};
 
 use crate::{
-    compile_shader, link_program, polyline::polyline_to_triangles, reinterpret_cast_slice,
+    compile_shader, link_program, polyline::{lines_to_triangles, polyline_to_triangles}, reinterpret_cast_slice,
 };
 
 #[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy)]
@@ -104,6 +104,11 @@ impl Scribe {
 
     pub fn draw_poly_line(&mut self, points: &[Vec2], width: f32, closed: bool, color: Color) {
         let vertices = polyline_to_triangles(points, width, 12, closed);
+        self.vertices.entry(color).or_default().extend(&vertices);
+    }
+
+    pub fn draw_lines(&mut self, points: &[Vec2], width: f32, color: Color) {
+        let vertices = lines_to_triangles(points, width);
         self.vertices.entry(color).or_default().extend(&vertices);
     }
 

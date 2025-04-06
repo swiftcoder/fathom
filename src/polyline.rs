@@ -1,5 +1,33 @@
 use glam::{Mat2, Vec2, vec2};
+use itertools::Itertools;
 use std::f32::consts::PI;
+
+pub fn lines_to_triangles(points: &[Vec2], width: f32) -> Vec<Vec2> {
+    let mut verts = Vec::new();
+    let half_width = width / 2.0;
+
+    if points.len() < 2 {
+        return verts;
+    }
+
+    for (p0, p1) in points.iter().tuples() {
+        let dir = (p1 - p0).normalize_or_zero();
+        let normal = perpendicular(dir);
+
+        // Create two triangles forming a quad
+        let a = p0 + normal * half_width;
+        let b = p0 - normal * half_width;
+        let c = p1 + normal * half_width;
+        let d = p1 - normal * half_width;
+
+        // Triangle 1: a, b, c
+        push_triangle(&mut verts, a, b, c);
+        // Triangle 2: c, b, d
+        push_triangle(&mut verts, c, b, d);
+    }
+
+    verts
+}
 
 /// Converts a polyline into triangles with round joins and round end caps.
 /// Triangles are returned as a flat Vec<Vec2> in CW winding order.
@@ -60,7 +88,14 @@ pub fn polyline_to_triangles(
     let dir_end = (points[last] - points[last - 1]).normalize_or_zero();
     if closed {
         let dir = (points[0] - points[last]).normalize_or_zero();
-        generate_round_join(&mut verts, points[0], dir_start, dir, half_width, segments_per_arc);
+        generate_round_join(
+            &mut verts,
+            points[0],
+            dir_start,
+            dir,
+            half_width,
+            segments_per_arc,
+        );
     } else {
         generate_round_cap(
             &mut verts,

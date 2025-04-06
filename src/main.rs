@@ -8,6 +8,7 @@ use web_sys::{
 use web_time::{Duration, Instant};
 
 mod app;
+mod mine_shaft;
 mod polyline;
 mod post_processor;
 mod scribe;
