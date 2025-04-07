@@ -2,6 +2,8 @@
 
 A quick entry for the ludum dare 57 game jam (48-hour compo rules), entirely in rust + WASM
 
+![screenshort of splash screen](assets/preview.png)
+
 # Building and running
 
 You'll need a rust toolchain, the wasm32-unknown-unknown target, and [trunk](https://trunkrs.dev)
